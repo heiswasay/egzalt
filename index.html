@@ -127,6 +127,8 @@ section { position: relative; padding-block: clamp(90px, 13vw, 180px); }
 .panel-in { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); min-height: min(460px, 70vh); transform-origin: 50% 0; will-change: transform; }
 .panel-art { position: relative; overflow: hidden; background: #111214; }
 .panel-art canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.panel-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.04); transition: transform 1.2s var(--ease); }
+.panel:hover .panel-art img { transform: scale(1.09); }
 .panel-copy { padding: clamp(22px, 3vw, 44px); display: grid; align-content: space-between; gap: 30px; }
 .panel-copy .eyebrow { color: var(--muted); }
 .panel-copy h3 { font-size: clamp(24px, 2.4vw, 36px); line-height: 1.15; margin-top: 12px; }
@@ -286,19 +288,19 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--line); back
       </div>
       <div class="stack" id="stack">
         <article class="panel" style="--i:0"><div class="panel-in">
-          <div class="panel-art"><canvas data-art="0"></canvas></div>
+          <div class="panel-art"><img src="step-1.jpg" alt="Chrome lens over scattered tiles" loading="lazy" decoding="async"></div>
           <div class="panel-copy"><div><span class="eyebrow">Step one</span><h3>Discover</h3><p>We study your brand, your audience and your competitors, and find what is holding you back.</p></div><div class="panel-n"><span>Audit and research</span><b>01</b></div></div>
         </div></article>
         <article class="panel" style="--i:1"><div class="panel-in">
-          <div class="panel-art"><canvas data-art="1"></canvas></div>
+          <div class="panel-art"><img src="step-2.jpg" alt="Chrome tiles laid out like a calendar" loading="lazy" decoding="async"></div>
           <div class="panel-copy"><div><span class="eyebrow">Step two</span><h3>Plan</h3><p>A clear strategy, content calendar and budget, agreed with you before anything goes live.</p></div><div class="panel-n"><span>Strategy and calendar</span><b>02</b></div></div>
         </div></article>
         <article class="panel" style="--i:2"><div class="panel-in">
-          <div class="panel-art"><canvas data-art="2"></canvas></div>
+          <div class="panel-art"><img src="step-3.jpg" alt="Chrome tiles assembled around a glowing orange tile" loading="lazy" decoding="async"></div>
           <div class="panel-copy"><div><span class="eyebrow">Step three</span><h3>Create</h3><p>Design, content, ads and builds made by one team that knows your brand inside out.</p></div><div class="panel-n"><span>Design, content and builds</span><b>03</b></div></div>
         </div></article>
         <article class="panel" style="--i:3"><div class="panel-in">
-          <div class="panel-art"><canvas data-art="3"></canvas></div>
+          <div class="panel-art"><img src="step-4.jpg" alt="A staircase of chrome tiles rising to an orange tile" loading="lazy" decoding="async"></div>
           <div class="panel-copy"><div><span class="eyebrow">Step four</span><h3>Grow</h3><p>We launch, measure and improve every month, and report the results in plain language.</p></div><div class="panel-n"><span>Launch and improve</span><b>04</b></div></div>
         </div></article>
       </div>
