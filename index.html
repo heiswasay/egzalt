@@ -498,7 +498,7 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--line); back
     function frame(now) {
       const dt = Math.min(50, now - lastT || 16); lastT = now;
       const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-      const target = clamp(scrollY / max); sp += (target - sp) * .03;
+      const target = clamp(scrollY / max); sp += (target - sp) * (1 - Math.exp(-Math.min(dt, 100) / 1400));
       smx += (mx - smx) * .05; smy += (my - smy) * .05;
       if (!reduce) spin += dt * .00006;
       const { pose, seg, t } = stagePose(sp);
@@ -506,7 +506,7 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--line); back
       ring.position.set(pose[0], pose[1], pose[2]);
       ring.rotation.set(pose[3] + smy * .15, smx * .2, pose[4]);
       ring.scale.setScalar(pose[5]);
-      const turn = spin + sp * Math.PI * 1.2;
+      const turn = spin + sp * Math.PI * .6;
       tiles.forEach((tl, i) => {
         const a = tl.a + turn;
         // ring pose (in ring space)
