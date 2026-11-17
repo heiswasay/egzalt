@@ -1,7 +1,8 @@
 // Vercel serverless function: sends contact-form enquiries to contact@egzalt.com
 // through the Hostinger Mail API. Secrets come from project environment variables.
 
-const MAX = { name: 120, company: 160, email: 200, service: 60, message: 5000 };
+const { verify } = require('./_tile');
+const MAX ={ name: 120, company: 160, email: 200, service: 60, message: 5000 };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const clean = (v, n) => String(v ?? '').replace(/\r/g, '').trim().slice(0, n);
 
@@ -14,6 +15,15 @@ module.exports = async (req, res) => {
 
   // Honeypot: real visitors never fill this hidden field.
   if (body.website) return res.status(200).json({ ok: true });
+
+  // "Turn the tile" check: the signed challenge must be solved, by hand, in time.
+  const secret = process.env.CAPTCHA_SECRET;
+  const fail = secret ? verify(body.tileToken, body.tileAnswer, secret) : 'not-configured';
+  if (fail) {
+    const msg = fail === 'expired' ? 'The tile check expired. Please turn the new tile and send again.'
+      : 'Please turn the tile until its orange corner meets the outline.';
+    return res.status(400).json({ ok: false, error: msg, captcha: true });
+  }
 
   const f = {
     name: clean(body.name, MAX.name),

@@ -136,6 +136,21 @@ section { position: relative; padding-block: clamp(90px, 13vw, 180px); }
 .panel-n { font-family: var(--font-display); font-weight: 300; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 16px; }
 .panel-n b { color: var(--orange); font-weight: 400; }
 
+/* turn-the-tile check */
+.tilecheck { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 16px; align-items: center; padding: 12px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .4s; }
+.tilecheck.ok { box-shadow: inset 0 0 0 1px rgba(249,135,2,.6); }
+.tilecheck canvas { width: 112px; height: 112px; border-radius: 4px; background: radial-gradient(circle at 50% 40%, #16171a, #050505 70%); cursor: grab; touch-action: none; outline: none; }
+.tilecheck canvas:active { cursor: grabbing; }
+.tilecheck canvas:focus-visible { box-shadow: 0 0 0 2px var(--orange); }
+.tilecheck b { display: block; font-weight: 500; font-size: 13.5px; letter-spacing: .02em; }
+.tilecheck p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.tilecheck .tc-state { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.tilecheck .tc-state i { width: 7px; height: 7px; border-radius: 50%; background: #3A3D43; transition: background .3s, box-shadow .3s; }
+.tilecheck.ok .tc-state { color: var(--orange); }
+.tilecheck.ok .tc-state i { background: var(--orange); box-shadow: 0 0 10px var(--orange); }
+.tilecheck .tc-new { background: none; border: 0; padding: 0; margin-left: 10px; color: var(--muted); font: inherit; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.tilecheck .tc-new:hover { color: var(--text); }
+
 /* ways */
 .ways { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 40px; align-items: start; }
 .ways h2 { font-size: clamp(32px, 4vw, 58px); line-height: 1.05; position: sticky; top: 100px; }
@@ -337,6 +352,10 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--line); back
           </div>
           <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
           <div class="field"><textarea id="f-msg" name="message" placeholder=" "></textarea><label for="f-msg">How can we help?</label></div>
+          <div class="tilecheck" id="tileCheck">
+            <canvas id="tileCanvas" width="224" height="224" tabindex="0" role="slider" aria-label="Turn the tile. Use the left and right arrow keys." aria-valuemin="0" aria-valuemax="359" aria-valuenow="0"></canvas>
+            <div><b>Raise check</b><p>Drag to turn the chrome tile until its orange corner meets the dotted outline. It proves you&rsquo;re human.</p><span class="tc-state"><i></i><span id="tileState">Not turned yet</span></span><button type="button" class="tc-new" id="tileNew">New tile</button></div>
+          </div>
           <div class="form-foot"><span style="font-size:12px;color:var(--muted)">We reply to every enquiry.</span><button class="btn btn-light" type="submit" id="sendBtn">Send message</button></div>
           <p class="form-note" id="formNote" hidden></p>
         </form>
@@ -551,15 +570,55 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--line); back
     catch { const r = document.createRange(); r.selectNodeContents($('#mailText')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); copyBtn.textContent = 'Selected'; }
     setTimeout(() => copyBtn.textContent = 'Copy', 1800);
   });
+  /* turn-the-tile check */
+  const tc = { box: $('#tileCheck'), cv: $('#tileCanvas'), state: $('#tileState'), target: 0, rot: 0, token: '', ok: false, moved: 0, glow: 0 };
+  tc.x = tc.cv.getContext('2d');
+  function rr(x, s, r) { x.beginPath(); x.moveTo(-s + r, -s); x.lineTo(s - r, -s); x.quadraticCurveTo(s, -s, s, -s + r); x.lineTo(s, s - r); x.quadraticCurveTo(s, s, s - r, s); x.lineTo(-s + r, s); x.quadraticCurveTo(-s, s, -s, s - r); x.lineTo(-s, -s + r); x.quadraticCurveTo(-s, -s, -s + r, -s); x.closePath(); }
+  function drawTile() {
+    const x = tc.x, W = 224, s = 52; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, W); x.translate(W / 2, W / 2);
+    // ghost outline at the target angle
+    x.save(); x.rotate(tc.target * Math.PI / 180); rr(x, s + 6, 16); x.setLineDash([5, 7]); x.lineWidth = 2; x.strokeStyle = 'rgba(249,249,249,.28)'; x.stroke(); x.setLineDash([]);
+    x.beginPath(); x.arc(s - 6, -s + 6, 9, 0, Math.PI * 2); x.strokeStyle = 'rgba(249,135,2,.7)'; x.lineWidth = 2; x.stroke(); x.restore();
+    // chrome tile at the visitor's angle
+    x.save(); x.rotate(tc.rot * Math.PI / 180);
+    x.shadowColor = tc.ok ? 'rgba(249,135,2,.55)' : 'rgba(0,0,0,.7)'; x.shadowBlur = tc.ok ? 28 : 18; x.shadowOffsetY = tc.ok ? 0 : 8;
+    const g = x.createLinearGradient(-s, -s, s, s); g.addColorStop(0, '#f4f5f7'); g.addColorStop(.35, '#8d9097'); g.addColorStop(.55, '#d9dbe0'); g.addColorStop(1, '#3a3d43');
+    rr(x, s, 14); x.fillStyle = g; x.fill(); x.shadowColor = 'transparent';
+    const h = x.createLinearGradient(0, -s, 0, 0); h.addColorStop(0, 'rgba(255,255,255,.55)'); h.addColorStop(1, 'rgba(255,255,255,0)'); rr(x, s - 5, 11); x.fillStyle = h; x.fill();
+    rr(x, s, 14); x.lineWidth = 1.5; x.strokeStyle = tc.ok ? '#F98702' : 'rgba(255,255,255,.35)'; x.stroke();
+    const o = x.createRadialGradient(s - 14, -s + 14, 1, s - 12, -s + 12, 9); o.addColorStop(0, '#ffd09a'); o.addColorStop(.5, '#F98702'); o.addColorStop(1, '#8C4800');
+    x.beginPath(); x.arc(s - 12, -s + 12, 8, 0, Math.PI * 2); x.fillStyle = o; x.fill(); x.restore();
+  }
+  const angDiff = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
+  function setTile(ok) { tc.ok = ok; tc.box.classList.toggle('ok', ok); tc.state.textContent = ok ? 'Verified, thank you' : (tc.moved ? 'Keep turning' : 'Not turned yet'); tc.cv.setAttribute('aria-valuenow', Math.round(((tc.rot % 360) + 360) % 360)); if (ok) tc.cv.setAttribute('aria-valuetext', 'Aligned'); else tc.cv.removeAttribute('aria-valuetext'); drawTile(); }
+  function checkTile(final) { if (angDiff(tc.rot, tc.target) <= 7 && tc.moved > 3) { if (final) tc.rot = tc.target; setTile(true); } else setTile(false); }
+  async function newTile() {
+    tc.moved = 0; tc.ok = false;
+    try { const r = await fetch('/api/challenge', { cache: 'no-store' }); const j = await r.json(); if (!j.ok) throw 0; tc.target = j.angle; tc.rot = j.start; tc.token = j.token; }
+    catch { tc.target = 40 + Math.floor(Math.random() * 281); tc.rot = (tc.target + 150) % 360; tc.token = ''; }
+    setTile(false);
+  }
+  let drag = null;
+  const ptrAng = e => { const b = tc.cv.getBoundingClientRect(); return Math.atan2(e.clientY - (b.top + b.height / 2), e.clientX - (b.left + b.width / 2)) * 180 / Math.PI; };
+  tc.cv.addEventListener('pointerdown', e => { drag = ptrAng(e); tc.cv.setPointerCapture(e.pointerId); });
+  tc.cv.addEventListener('pointermove', e => { if (drag === null) return; const a = ptrAng(e); let d = a - drag; if (d > 180) d -= 360; if (d < -180) d += 360; tc.rot += d; drag = a; tc.moved++; if (tc.ok && angDiff(tc.rot, tc.target) > 7) setTile(false); else drawTile(); });
+  const endDrag = () => { if (drag === null) return; drag = null; checkTile(true); };
+  tc.cv.addEventListener('pointerup', endDrag); tc.cv.addEventListener('pointercancel', endDrag);
+  tc.cv.addEventListener('keydown', e => { const step = e.shiftKey ? 15 : 3; if (e.key === 'ArrowRight' || e.key === 'ArrowUp') tc.rot += step; else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') tc.rot -= step; else return; e.preventDefault(); tc.moved += 2; checkTile(true); });
+  $('#tileNew').addEventListener('click', newTile);
+  newTile();
   const form = $('#contactForm'), note = $('#formNote');
   form.addEventListener('submit', async e => {
     e.preventDefault(); const d = new FormData(form); note.hidden = false;
     if (!d.get('name') || !d.get('email')) { note.textContent = 'Please add your name and email so we can reply.'; return; }
+    if (!tc.ok) { note.textContent = 'Please turn the tile until its orange corner meets the outline.'; tc.cv.focus(); return; }
+    d.set('tileToken', tc.token); d.set('tileAnswer', String(Math.round(tc.rot)));
     const btn = $('#sendBtn'); btn.disabled = true; btn.textContent = 'Sending…'; note.textContent = 'Sending your message…';
     try {
       const r = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(d)) });
       const j = await r.json().catch(() => ({}));
-      if (r.ok && j.ok) { form.reset(); note.textContent = 'Thank you. Your message has reached us and we’ll reply soon.'; btn.textContent = 'Sent'; setTimeout(() => { btn.disabled = false; btn.textContent = 'Send message'; }, 4000); return; }
+      if (r.ok && j.ok) { form.reset(); newTile(); note.textContent = 'Thank you. Your message has reached us and we’ll reply soon.'; btn.textContent = 'Sent'; setTimeout(() => { btn.disabled = false; btn.textContent = 'Send message'; }, 4000); return; }
+      if (j.captcha) newTile();
       note.textContent = j.error && r.status === 400 ? j.error : 'Sorry, it didn’t send. Please email contact@egzalt.com and we’ll reply.';
     } catch { note.textContent = 'Sorry, it didn’t send. Please email contact@egzalt.com and we’ll reply.'; }
     btn.disabled = false; btn.textContent = 'Send message';
