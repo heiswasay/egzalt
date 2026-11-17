@@ -455,9 +455,12 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--line); back
 
   function roundedTile(w, h, r, depth) {
     const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
-    s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
-    const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: .05, bevelSize: .05, bevelSegments: 4, curveSegments: 10 });
+    s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.absarc(x + w - r, y + r, r, -Math.PI / 2, 0, false);
+    s.lineTo(x + w, y + h - r); s.absarc(x + w - r, y + h - r, r, 0, Math.PI / 2, false);
+    s.lineTo(x + r, y + h); s.absarc(x + r, y + h - r, r, Math.PI / 2, Math.PI, false);
+    s.lineTo(x, y + r); s.absarc(x + r, y + r, r, Math.PI, Math.PI * 1.5, false);
+    // thin slab: faces are group 0, the thin rim (sides + bevel) is group 1
+    const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: .03, bevelSize: .03, bevelSegments: 6, curveSegments: 28 });
     g.center(); return g;
   }
   function initThree() {
@@ -477,21 +480,38 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--line); back
     lightPanel(5, 14, 0xffffff, [11, 0, -2], [0, -Math.PI / 2, 0]);
     lightPanel(10, 1.2, 0xf98702, [2, -8, 6], [-Math.PI / 2, 0, 0]);
     lightPanel(1, 8, 0xffb04a, [9, -4, 8], [0, -Math.PI / 3, 0]);
-    const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(env, .04).texture;
+    lightPanel(14, 10, 0xc6dbe6, [6, -6, 9], [-Math.PI / 4, -Math.PI / 5, 0]);   // cool icy fill for the blue-grey sheen
+    lightPanel(18, 7, 0x9fb2bd, [-4, -9, 4], [-Math.PI / 2, 0, 0]);
+    lightPanel(26, 14, 0x7f8f99, [0, -7, 11], [-Math.PI / 3, 0, 0]);   // soft under-front fill so faces turned down still read as metal
+    const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(env, .05).texture;
 
-    const geo = roundedTile(2.7, 2.7, .4, .18);
-    const chrome = new THREE.MeshStandardMaterial({ color: 0xe6e9ec, metalness: 1, roughness: .14, envMapIntensity: 1.4 });
+    const geo = roundedTile(2.5, 2.9, .3, .05);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x222222, .35));
     const key = new THREE.DirectionalLight(0xffffff, .9); key.position.set(-4, 6, 8); scene.add(key);
-    const smoke = new THREE.MeshStandardMaterial({ color: 0x8a9096, metalness: 1, roughness: .32, envMapIntensity: 1.2 });
-    const ember = new THREE.MeshStandardMaterial({ color: 0xf98702, metalness: .65, roughness: .26, emissive: 0x4a1d00, emissiveIntensity: .35 });
+    // satin faces: silver, icy blue-grey, glossy black (+ the odd Egzalt orange)
+    const silver = new THREE.MeshStandardMaterial({ color: 0xdfe3e7, metalness: 1, roughness: .3, envMapIntensity: 1.5 });
+    const ice = new THREE.MeshStandardMaterial({ color: 0xbfd2dc, metalness: .95, roughness: .36, envMapIntensity: 1.45 });
+    const black = new THREE.MeshStandardMaterial({ color: 0x101214, metalness: .7, roughness: .14, envMapIntensity: 1.1 });
+    const ember = new THREE.MeshStandardMaterial({ color: 0xf98702, metalness: .7, roughness: .3, emissive: 0x4a1d00, emissiveIntensity: .3 });
+    // thin bright chrome rim shared by every tile
+    const rim = new THREE.MeshStandardMaterial({ color: 0xf2f5f7, metalness: 1, roughness: .08, envMapIntensity: 2, emissive: 0x2a2d31, emissiveIntensity: .6 });
+    // soft halo behind each tile
+    const gcv = document.createElement('canvas'); gcv.width = gcv.height = 256; const gx = gcv.getContext('2d');
+    gx.shadowColor = 'rgba(220,235,245,1)'; gx.shadowBlur = 34; gx.fillStyle = 'rgba(220,235,245,1)';
+    gx.beginPath(); gx.roundRect ? gx.roundRect(48, 40, 160, 176, 26) : gx.rect(48, 40, 160, 176); gx.fill();
+    gx.globalCompositeOperation = 'destination-out'; gx.shadowBlur = 0; gx.beginPath(); gx.roundRect ? gx.roundRect(56, 48, 144, 160, 22) : gx.rect(56, 48, 144, 160); gx.fill();
+    const glowTex = new THREE.CanvasTexture(gcv);
+    const glowMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, opacity: .32, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const glowGeo = new THREE.PlaneGeometry(2.5 * 1.6, 2.9 * 1.454);
+    const looks = [silver, ice, black, ice, silver, black, black, ice, silver, ice];
 
     const N = 30, R = 7;
     const ring = new THREE.Group(); scene.add(ring);
     const tiles = [];
     for (let i = 0; i < N; i++) {
-      const mat = (i % 10 === 3) ? ember : (i % 3 === 0 ? smoke : chrome);
-      const m = new THREE.Mesh(geo, mat); ring.add(m);
+      const face = (i % 10 === 3) ? ember : looks[i % looks.length];
+      const m = new THREE.Mesh(geo, [face, rim]); ring.add(m);
+      const glow = new THREE.Mesh(glowGeo, glowMat); glow.renderOrder = -1; m.add(glow);
       tiles.push({ m, a: i / N * Math.PI * 2, twist: (i % 2 ? 1 : -1) * .14, p: new THREE.Vector3(), q: new THREE.Quaternion(), s: 1 });
     }
     // stack targets for the contact section (3 tiles rising)
