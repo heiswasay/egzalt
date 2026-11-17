@@ -16,12 +16,12 @@ module.exports = async (req, res) => {
   // Honeypot: real visitors never fill this hidden field.
   if (body.website) return res.status(200).json({ ok: true });
 
-  // "Turn the tile" check: the signed challenge must be solved, by hand, in time.
+  // "Slide the tile" check: the signed challenge must be solved, by hand, in time.
   const secret = process.env.CAPTCHA_SECRET;
   const fail = secret ? verify(body.tileToken, body.tileAnswer, secret) : 'not-configured';
   if (fail) {
-    const msg = fail === 'expired' ? 'The tile check expired. Please turn the new tile and send again.'
-      : 'Please turn the tile until its orange corner meets the outline.';
+    const msg = fail === 'expired' ? 'The quick check expired. Please drag the new tile into the box and send again.'
+      : 'Please drag the orange tile into the empty box.';
     return res.status(400).json({ ok: false, error: msg, captcha: true });
   }
 

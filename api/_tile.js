@@ -1,17 +1,17 @@
-// Shared helpers for the "turn the tile" check. Challenges are signed with
+// Shared helpers for the "slide the tile" check. Challenges are signed with
 // CAPTCHA_SECRET, so the server can verify them without storing anything.
 const crypto = require('crypto');
 
 const TTL = 10 * 60 * 1000;   // a challenge is valid for 10 minutes
 const MIN_SOLVE = 1200;       // humans need at least ~1.2s to turn the tile
-const TOLERANCE = 9;          // degrees
+const TOLERANCE = 4;          // percent of the track
 
 const b64 = b => Buffer.from(b).toString('base64url');
 const sign = (data, secret) => crypto.createHmac('sha256', secret).update(data).digest('base64url');
 
 function issue(secret) {
-  const angle = 40 + crypto.randomInt(0, 281);            // 40..320 degrees, never near upright
-  const start = (angle + 120 + crypto.randomInt(0, 121)) % 360; // tile starts well away from the answer
+  const angle = 30 + crypto.randomInt(0, 61);             // slot position, 30..90% along the track
+  const start = 0;                                        // the tile always starts at the left
   const payload = b64(JSON.stringify({ a: angle, t: Date.now(), n: crypto.randomBytes(8).toString('hex') }));
   return { angle, start, token: `${payload}.${sign(payload, secret)}` };
 }
@@ -27,8 +27,7 @@ function verify(token, answer, secret) {
   if (age < MIN_SOLVE) return 'too-fast';
   const a = Number(answer);
   if (!Number.isFinite(a)) return 'no-answer';
-  const diff = Math.abs((((a - p.a) % 360) + 540) % 360 - 180);
-  return diff <= TOLERANCE ? null : 'wrong';
+  return Math.abs(a - p.a) <= TOLERANCE ? null : 'wrong';
 }
 
 module.exports = { issue, verify };
